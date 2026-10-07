@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fancy Clock v3</title>
+<style>
+:root {
+  --bg-main:   #0a0014;
+  --bg-box:    #2C0071;
+  --bg-box2:   rgba(44,0,113,0.6);
+  --fg-1:      #E645F5;
+  --fg-2:      #FF8CFF;
+  --fg-muted:  #C1B6CB;
+  --border:    #E645F5;
+  --grad-a:    #B379FA;
+  --grad-b:    #16131B;
+  --grad-c:    #C1B6CB;
+}
+body.light {
+  --bg-main:   #f3e8ff;
+  --bg-box:    #ffffff;
+  --bg-box2:   rgba(255,255,255,0.85);
+  --fg-1:      #7a1fa5;
+  --fg-2:      #a855f7;
+  --fg-muted:  #5a4b6e;
+  --border:    #a855f7;
+  --grad-a:    #c084fc;
+  --grad-b:    #ddd6fe;
+  --grad-c:    #a855f7;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background: var(--bg-main);
+  font-family:'Segoe UI',sans-serif; padding:20px;
+}
+.glow {
+  padding:5px; border-radius:26px;
+  background:linear-gradient(135deg, var(--grad-a), var(--grad-b), var(--grad-c), var(--border), var(--grad-a));
+  background-size:400% 400%;
+  animation:move 8s ease infinite, pulse 3s ease-in-out infinite;
+}
+@keyframes move { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+@keyframes pulse {
+  0%,100% { box-shadow:0 0 20px var(--border), 0 0 45px var(--grad-a); }
+  50%     { box-shadow:0 0 35px var(--border), 0 0 70px var(--grad-a); }
+}
+.box {
+  background: var(--bg-box2);
+  border-radius:22px; padding:24px 32px;
+  text-align:center; border:1px solid rgba(255,255,255,0.1);
+  width:640px; max-width:96vw;
+}
+.tabs { display:flex; justify-content:center; gap:6px; margin-bottom:18px; flex-wrap:wrap; }
+.tab {
+  background: rgba(230,69,245,0.1);
+  color: var(--fg-muted);
+  border:1px solid rgba(230,69,245,0.3);
+  padding:7px 14px; border-radius:20px;
+  font-size:11px; cursor:pointer; letter-spacing:1px;
+  transition:all 0.3s;
+}
+.tab.active, .tab:hover {
+  background: rgba(230,69,245,0.3);
+  color: var(--fg-2);
+  box-shadow:0 0 12px var(--border);
+}
+.panel { display:none; }
+.panel.active { display:block; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+
+/* CLOCK */
+.view { display:flex; align-items:center; justify-content:center; gap:25px; padding:10px 0; flex-wrap:wrap; }
+.day  { color: var(--fg-2); font-size:13px; letter-spacing:5px; font-weight:600; margin-bottom:6px; }
+.time { color: var(--fg-1); font-size:46px; font-weight:700; letter-spacing:2px;
+        text-shadow:0 0 10px var(--border), 0 0 22px var(--border); line-height:1; }
+.ampm { color: var(--fg-2); font-size:13px; font-weight:600; margin-top:4px; letter-spacing:3px; }
+.date { color: var(--fg-muted); font-size:11px; margin-top:10px; letter-spacing:1.5px; }
+.analog {
+  position:relative; width:130px; height:130px; border-radius:50%;
+  background:radial-gradient(circle, var(--bg-box), rgba(20,0,50,0.9));
+  border:2px solid var(--border);
+  box-shadow:0 0 15px var(--border), inset 0 0 15px rgba(230,69,245,0.4);
+}
+.analog::before {
+  content:''; position:absolute; top:50%; left:50%;
+  width:10px; height:10px; background: var(--fg-2); border-radius:50%;
+  transform:translate(-50%,-50%); box-shadow:0 0 10px var(--border); z-index:10;
+}
+.hand { position:absolute; bottom:50%; left:50%; transform-origin:bottom center; border-radius:4px; }
+.hh { width:4px; height:36px; margin-left:-2px; background: var(--fg-2); box-shadow:0 0 8px var(--border); }
+.mh { width:3px; height:50px; margin-left:-1.5px; background: var(--fg-1); box-shadow:0 0 8px var(--border); }
+.sh { width:2px; height:56px; margin-left:-1px; background: var(--fg-muted); box-shadow:0 0 6px var(--fg-muted); }
+
+/* WEATHER */
+.weather-widget {
+  margin-top:14px; padding:12px 16px;
+  background: rgba(230,69,245,0.08);
+  border:1px solid rgba(230,69,245,0.25);
+  border-radius:12px;
+  display:flex; flex-direction:column; align-items:stretch; gap:6px;
+  color: var(--fg-muted); font-size:12px;
+}
+.weather-widget .temp { color: var(--fg-1); font-size:22px; font-weight:700; }
+.weather-widget .icon { font-size:26px; }
+.location-line {
+  width: 100%; text-align: center;
+  color: var(--fg-2); font-size: 12px;
+  letter-spacing: 1px; margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(230,69,245,0.3);
+}
+.location-line b { color: var(--fg-1); font-weight: 600; }
+.weather-content {
+  display:flex; align-items:center; gap:12px;
+  flex-wrap:wrap; justify-content:center;
+}
+.detect-info {
+  font-size: 9px; color: var(--fg-muted);
+  opacity: 0.55; letter-spacing: 1px;
+}
+
+/* WORLD CLOCK */
+.world-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
+.city-card {
+  background: rgba(230,69,245,0.08);
+  border:1px solid rgba(230,69,245,0.25);
+  border-radius:10px; padding:10px 14px;
+  text-align:left; display:flex; justify-content:space-between; align-items:center;
+}
+.city-card .name { color: var(--fg-2); font-size:12px; letter-spacing:1px; }
+.city-card .ctime { color: var(--fg-1); font-size:16px; font-weight:700; font-variant-numeric:tabular-nums; }
+.city-card .cdate { color: var(--fg-muted); font-size:9px; letter-spacing:1px; }
+
+/* GENERIC */
+h3 { color: var(--fg-2); font-size:13px; letter-spacing:3px; margin-bottom:12px; }
+.row { display:flex; gap:8px; justify-content:center; margin-bottom:10px; flex-wrap:wrap; }
+input[type="time"], input[type="text"] {
+  background: rgba(230,69,245,0.1); border:1px solid rgba(230,69,245,0.4);
+  color: var(--fg-1); padding:8px 12px; border-radius:8px; font-size:15px;
+  outline:none; font-family:inherit;
+}
+.btn {
+  background:linear-gradient(135deg, var(--grad-a), var(--border)); color:#fff;
+  border:none; padding:8px 16px; border-radius:8px;
+  font-size:11px; font-weight:600; letter-spacing:1px;
+  cursor:pointer; transition:all 0.3s; font-family:inherit;
+  box-shadow:0 0 12px rgba(230,69,245,0.5);
+}
+.btn:hover { transform:translateY(-2px); box-shadow:0 0 22px var(--border); }
+.btn.red   { background:linear-gradient(135deg,#ff3d6e,var(--border)); }
+.btn.green { background:linear-gradient(135deg,#0ff,#0a9); }
+.btn.tiny  { padding:5px 10px; font-size:10px; }
+.alarm-item {
+  display:flex; justify-content:space-between; align-items:center;
+  background: rgba(230,69,245,0.08);
+  border:1px solid rgba(230,69,245,0.25);
+  padding:8px 12px; border-radius:10px; margin-bottom:8px;
+  color: var(--fg-muted); font-size:13px; letter-spacing:1px;
+}
+.alarm-item span { color: var(--fg-1); font-weight:600; }
+.remove-btn {
+  background:transparent; color:#ff3d6e; border:1px solid #ff3d6e;
+  border-radius:6px; padding:3px 10px; cursor:pointer; font-size:10px;
+}
+.remove-btn:hover { background:#ff3d6e; color:#fff; }
+.sw-display {
+  color: var(--fg-1); font-size:40px; font-weight:700; letter-spacing:3px;
+  text-shadow:0 0 15px var(--border); margin:10px 0 18px;
+  font-variant-numeric:tabular-nums;
+}
+.hint { color: var(--fg-muted); font-size:11px; margin-top:12px; opacity:0.8; letter-spacing:1px; }
+.hint b { color: var(--fg-1); }
+
+/* CALENDAR */
+.cal-head {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:12px; padding:0 6px;
+}
+.cal-head .month { color: var(--fg-1); font-size:16px; font-weight:700; letter-spacing:2px; }
+.cal-nav {
+  background: rgba(230,69,245,0.15); color: var(--fg-2);
+  border:1px solid rgba(230,69,245,0.3);
+  width:28px; height:28px; border-radius:50%;
+  cursor:pointer; font-size:14px;
+}
+.cal-nav:hover { background: rgba(230,69,245,0.35); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.cal-cell {
+  padding:8px 2px; border-radius:6px;
+  color: var(--fg-muted); font-size:12px;
+  background: rgba(230,69,245,0.05);
+}
+.cal-cell.head {
+  color: var(--fg-2); font-weight:700; font-size:10px;
+  letter-spacing:1px; background:transparent;
+}
+.cal-cell.today {
+  background: linear-gradient(135deg, var(--grad-a), var(--border));
+  color: #fff; font-weight:700; box-shadow:0 0 12px var(--border);
+}
+.cal-cell.empty { background:transparent; }
+
+/* SETTINGS */
+.settings-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 0; border-bottom:1px solid rgba(230,69,245,0.15);
+  color: var(--fg-muted); font-size:13px;
+}
+.theme-presets { display:flex; gap:8px; }
+.preset {
+  width:26px; height:26px; border-radius:50%;
+  cursor:pointer; border:2px solid transparent;
+  transition: transform 0.2s;
+}
+.preset:hover { transform: scale(1.15); }
+.preset.active { border-color: var(--fg-2); }
+
+/* MODAL */
+.modal {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9);
+  z-index:9999; align-items:center; justify-content:center;
+}
+.modal.active { display:flex; animation:shake 0.5s infinite; }
+@keyframes shake {
+  0%,100% { transform:translateX(0); }
+  25% { transform:translateX(-5px); }
+  75% { transform:translateX(5px); }
+}
+.ring-box {
+  background: var(--bg-box); border:2px solid var(--border); border-radius:20px;
+  padding:40px 60px; text-align:center; box-shadow:0 0 60px var(--border);
+}
+.ring-box h2 { color: var(--fg-2); font-size:28px; letter-spacing:4px; margin-bottom:20px; }
+.ring-box .rtime { color: var(--fg-1); font-size:44px; font-weight:700; margin-bottom:25px; }
+
+@media (max-width: 640px) {
+  .box { padding:18px 16px; }
+  .time { font-size:34px; }
+  .analog { width:100px; height:100px; }
+  .hh { height:28px; } .mh { height:38px; } .sh { height:44px; }
+  .world-grid { grid-template-columns:1fr; }
+  .tab { padding:6px 10px; font-size:10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="glow">
+  <div class="box">
+
+    <div class="tabs">
+      <div class="tab active" data-tab="clock">🕐 CLOCK</div>
+      <div class="tab" data-tab="world">🌍 WORLD</div>
+      <div class="tab" data-tab="alarm">⏰ ALARM</div>
+      <div class="tab" data-tab="stopwatch">⏱️ STOPWATCH</div>
+      <div class="tab" data-tab="calendar">📅 CALENDAR</div>
+      <div class="tab" data-tab="settings">⚙️ SETTINGS</div>
+    </div>
+
+    <!-- CLOCK -->
+    <div class="panel active" id="panel-clock">
+      <div class="view">
+        <div>
+          <div class="day"  id="day">—</div>
+          <div class="time" id="time">00:00:00</div>
+          <div class="ampm" id="ampm">AM</div>
+          <div class="date" id="date">—</div>
+        </div>
+        <div class="analog" id="analog">
+          <div class="hand hh" id="hh"></div>
+          <div class="hand mh" id="mh"></div>
+          <div class="hand sh" id="sh"></div>
+        </div>
+      </div>
+
+      <div class="weather-widget">
+        <div class="location-line" id="locationLine">
+          📍 <b>আপনার অবস্থান শনাক্ত করা হচ্ছে...</b>
+        </div>
+        <div class="weather-content" id="weather">
+          <span class="icon">⏳</span>
+          <span>একটু অপেক্ষা করুন...</span>
+        </div>
+        <div class="detect-info" id="detectInfo"></div>
+        <button class="btn tiny" id="retryWeather">🔄 আবার চেষ্টা</button>
+      </div>
+    </div>
+
+    <!-- WORLD -->
+    <div class="panel" id="panel-world">
+      <h3>WORLD CLOCK</h3>
+      <div class="world-grid" id="worldGrid"></div>
+    </div>
+
+    <!-- ALARM -->
+    <div class="panel" id="panel-alarm">
+      <h3>SET ALARM</h3>
+      <div class="row">
+        <input type="time" id="alarmTime" value="07:00">
+        <button class="btn" id="addAlarm">ADD</button>
+      </div>
+      <div class="row">
+        <button class="btn green tiny" id="test30">+30s</button>
+        <button class="btn green tiny" id="test60">+1m</button>
+        <button class="btn tiny" id="testSound">🔊 শব্দ টেস্ট</button>
+      </div>
+      <div class="row">
+        <input type="text" id="alarmLabel" placeholder="লেবেল (ঐচ্ছিক)" style="width:180px; font-size:12px;">
+      </div>
+      <div id="alarmList"></div>
+      <div class="hint">এখন: <b id="nowHM">--:--</b></div>
+    </div>
+
+    <!-- STOPWATCH -->
+    <div class="panel" id="panel-stopwatch">
+      <h3>STOPWATCH</h3>
+      <div class="sw-display" id="swDisplay">00:00:00.00</div>
+      <div class="row">
+        <button class="btn" id="swStart">START</button>
+        <button class="btn" id="swStop">STOP</button>
+        <button class="btn red" id="swReset">RESET</button>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="panel" id="panel-calendar">
+      <div class="cal-head">
+        <button class="cal-nav" id="calPrev">‹</button>
+        <div class="month" id="calMonth">—</div>
+        <button class="cal-nav" id="calNext">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="panel-settings">
+      <h3>SETTINGS</h3>
+      <div class="settings-row">
+        <span>থিম</span>
+        <button class="btn tiny" id="themeToggle">🌙 DARK</button>
+      </div>
+      <div class="settings-row">
+        <span>রঙ</span>
+        <div class="theme-presets">
+          <div class="preset active" data-color="purple"  style="background:#E645F5"></div>
+          <div class="preset" data-color="cyan"    style="background:#22d3ee"></div>
+          <div class="preset" data-color="green"   style="background:#34d399"></div>
+          <div class="preset" data-color="orange"  style="background:#fb923c"></div>
+          <div class="preset" data-color="red"     style="background:#f43f5e"></div>
+          <div class="preset" data-color="blue"    style="background:#3b82f6"></div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span>অ্যালার্ম সাউন্ড</span>
+        <input type="file" id="soundFile" accept="audio/*" style="color:var(--fg-muted); font-size:10px; max-width:180px;">
+      </div>
+      <div class="settings-row">
+        <span>সাউন্ড নাম</span>
+        <span id="soundName" style="color:var(--fg-1); font-size:11px;">ডিফল্ট বিপ</span>
+      </div>
+      <div class="settings-row">
+        <span>সব ডেটা মুছো</span>
+        <button class="btn red tiny" id="clearAll">RESET</button>
+      </div>
+      <div class="hint" style="margin-top:16px;">Fancy Clock v3.0 • Auto Location</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- RING MODAL -->
+<div class="modal" id="ringModal">
+  <div class="ring-box">
+    <h2>⏰ ALARM!</h2>
+    <div class="rtime" id="ringTime">00:00</div>
+    <div id="ringLabel" style="color:var(--fg-muted); margin-bottom:18px; font-size:14px;"></div>
+    <button class="btn red" id="stopRing">STOP</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const pad2 = n => String(n).padStart(2, "0");
+const $    = id => document.getElementById(id);
+
+/* ============ STATE ============ */
+let alarms = [];
+let ringing = null;
+let ringTimer = null;
+let customSoundURL = null;
+
+/* ============ AUDIO ============ */
+let audioCtx = null;
+function unlockAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) {}
+}
+document.addEventListener("click", unlockAudio);
+
+function beep() {
+  if (customSoundURL) {
+    try {
+      const a = new Audio(customSoundURL);
+      a.volume = 0.8;
+      a.play().catch(()=>{});
+    } catch(e) {}
+    return;
+  }
+  unlockAudio();
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = "sine"; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+    o.start();
+    o.stop(audioCtx.currentTime + 0.45);
+  } catch (e) {}
+}
+
+/* ============ TABS ============ */
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    $("panel-" + t.dataset.tab).classList.add("active");
+  });
+});
+
+/* ============ MAIN CLOCK ============ */
+const days   = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"];
+const months = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"];
+
+function tickClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+
+  $("day").textContent  = days[now.getDay()];
+  $("time").textContent = `${pad2(h12)}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+  $("ampm").textContent = ampm;
+  $("date").textContent = `${pad2(now.getDate())} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  $("nowHM").textContent = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+
+  const s = now.getSeconds();
+  const m = now.getMinutes() + s / 60;
+  const hr = (now.getHours() % 12) + m / 60;
+  $("sh").style.transform = `rotate(${s * 6}deg)`;
+  $("mh").style.transform = `rotate(${m * 6}deg)`;
+  $("hh").style.transform = `rotate(${hr * 30}deg)`;
+
+  checkAlarms(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ============ WORLD CLOCK ============ */
+const CITIES = [
+  { name: "Dhaka",     tz: "Asia/Dhaka" },
+  { name: "Kolkata",   tz: "Asia/Kolkata" },
+  { name: "London",    tz: "Europe/London" },
+  { name: "New York",  tz: "America/New_York" },
+  { name: "Tokyo",     tz: "Asia/Tokyo" },
+  { name: "Dubai",     tz: "Asia/Dubai" }
+];
+
+function renderWorld() {
+  const grid = $("worldGrid");
+  grid.innerHTML = "";
+  CITIES.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "city-card";
+    card.innerHTML = `
+      <div>
+        <div class="name">${c.name}</div>
+        <div class="cdate" id="wdate-${c.name.replace(/ /g,'')}">—</div>
+      </div>
+      <div class="ctime" id="wtime-${c.name.replace(/ /g,'')}">--:--</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function updateWorld() {
+  const now = new Date();
+  CITIES.forEach(c => {
+    try {
+      const key = c.name.replace(/ /g,'');
+      const time = now.toLocaleTimeString("en-US", {
+        timeZone: c.tz, hour: "2-digit", minute: "2-digit", hour12: true
+      });
+      const date = now.toLocaleDateString("en-GB", {
+        timeZone: c.tz, day: "2-digit", month: "short"
+      });
+      const tEl = $("wtime-" + key);
+      const dEl = $("wdate-" + key);
+      if (tEl) tEl.textContent = time;
+      if (dEl) dEl.textContent = date;
+    } catch(e) {}
+  });
+}
+renderWorld();
+updateWorld();
+setInterval(updateWorld, 1000);
+
+/* ============ WEATHER CODES ============ */
+const WEATHER_CODES = {
+  0:["☀️","পরিষ্কার"], 1:["🌤️","প্রায় পরিষ্কার"], 2:["⛅","আংশিক মেঘ"], 3:["☁️","মেঘলা"],
+  45:["🌫️","কুয়াশা"], 48:["🌫️","কুয়াশা"],
+  51:["🌦️","হালকা গুঁড়ি"], 53:["🌦️","গুঁড়ি"], 55:["🌧️","ভারী গুঁড়ি"],
+  61:["🌧️","হালকা বৃষ্টি"], 63:["🌧️","বৃষ্টি"], 65:["🌧️","ভারী বৃষ্টি"],
+  71:["🌨️","হালকা তুষার"], 73:["🌨️","তুষার"], 75:["❄️","ভারী তুষার"],
+  80:["🌦️","বৃষ্টির ঝাপটা"], 81:["🌧️","ঝাপটা"], 82:["⛈️","ভারী ঝাপটা"],
+  95:["⛈️","বজ্রঝড়"], 96:["⛈️","শিল সহ ঝড়"], 99:["⛈️","ভারী শিলঝড়"]
+};
+
+/* ============ AUTO LOCATION + WEATHER ============ */
+
+async function autoDetect() {
+  const locEl = $("locationLine");
+  const wEl = $("weather");
+  const infoEl = $("detectInfo");
+
+  locEl.innerHTML = `📍 <b>আপনার অবস্থান শনাক্ত করা হচ্ছে...</b>`;
+  wEl.innerHTML = `<span class="icon">⏳</span><span>একটু অপেক্ষা করুন...</span>`;
+  infoEl.textContent = "";
+
+  if (navigator.geolocation) {
+    infoEl.textContent = "🛰️ GPS দিয়ে খোঁজা হচ্ছে...";
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        infoEl.textContent = "✅ GPS থেকে পাওয়া গেছে";
+        reverseGeocode(pos.coords.latitude, pos.coords.longitude, "gps");
+      },
+      err => {
+        console.log("GPS denied/failed:", err.message);
+        infoEl.textContent = "⚠️ GPS ব্লকড, IP দিয়ে চেষ্টা...";
+        tryIP();
+      },
+      { timeout: 6000, enableHighAccuracy: true, maximumAge: 300000 }
+    );
+  } else {
+    tryIP();
+  }
+}
+
+async function tryIP() {
+  const infoEl = $("detectInfo");
+  infoEl.textContent = "🌐 IP দিয়ে অবস্থান খোঁজা হচ্ছে...";
+
+  try {
+    const res = await fetch("https://ipapi.co/json/");
+    if (!res.ok) throw new Error("IP lookup failed");
+    const data = await res.json();
+    if (!data.latitude || !data.longitude) throw new Error("No coords");
+
+    infoEl.textContent = "✅ IP থেকে পাওয়া গেছে";
+    reverseGeocode(data.latitude, data.longitude, "ip", {
+      city: data.city,
+      region: data.region,
+      country: data.country_name
+    });
+  } catch (e) {
+    console.log("IP lookup failed:", e);
+    $("locationLine").innerHTML = `📍 <b>অবস্থান পাওয়া যায়নি</b>`;
+    $("weather").innerHTML = `<span class="icon">📡</span><span>🔄 আবার চেষ্টা করুন</span>`;
+    infoEl.textContent = "❌ ইন্টারনেট বা permission সমস্যা";
+  }
+}
+
+async function reverseGeocode(lat, lon, source, ipFallback = {}) {
+  const locEl = $("locationLine");
+  const infoEl = $("detectInfo");
+
+  let areaName = "";
+  let cityName = "";
+  let countryName = "";
+  let stateName = "";
+
+  try {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      areaName =
+        data.locality ||
+        data.localityInfo?.administrative?.[4]?.name ||
+        data.localityInfo?.administrative?.[3]?.name ||
+        "";
+      cityName =
+        data.city ||
+        data.localityInfo?.administrative?.[2]?.name ||
+        "";
+      stateName = data.principalSubdivision || "";
+      countryName = data.countryName || "";
+    }
+  } catch (e) {
+    console.log("Reverse geocode failed:", e);
+  }
+
+  if (!areaName && ipFallback.city) areaName = ipFallback.city;
+  if (!cityName && ipFallback.city) cityName = ipFallback.city;
+  if (!countryName && ipFallback.country) countryName = ipFallback.country;
+
+  if (!areaName) areaName = cityName || "Unknown";
+  if (!cityName) cityName = areaName;
+
+  let locationText = areaName;
+  if (cityName && cityName !== areaName) locationText += `, ${cityName}`;
+  if (stateName && stateName !== cityName && stateName !== areaName) {
+    locationText += `, ${stateName}`;
+  }
+  if (countryName && countryName !== "India" && countryName !== "Bangladesh") {
+    locationText += `, ${countryName}`;
+  }
+
+  locEl.innerHTML = `📍 <b>${locationText}</b>`;
+  infoEl.textContent = source === "gps" ? "🛰️ GPS source" : "🌐 IP source";
+
+  fetchWeather(lat, lon, { areaName, cityName, countryName, stateName, source });
+}
+
+async function fetchWeather(lat, lon, meta = {}) {
+  const el = $("weather");
+  el.innerHTML = `<span class="icon">⏳</span><span>আবহাওয়া লোড হচ্ছে...</span>`;
+
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const cur = data.current;
+    const code = cur.weather_code;
+    const [icon, desc] = WEATHER_CODES[code] || ["🌡️","—"];
+
+    el.innerHTML = `
+      <span class="icon">${icon}</span>
+      <span class="temp">${Math.round(cur.temperature_2m)}°C</span>
+      <span>${desc}</span>
+      <span style="opacity:0.65; font-size:11px;">
+        💧${cur.relative_humidity_2m}% 
+        💨${Math.round(cur.wind_speed_10m)}km/h
+        🌡️feels ${Math.round(cur.apparent_temperature)}°
+      </span>
+    `;
+
+    localStorage.setItem("fancyClockLocation", JSON.stringify({
+      lat, lon, ...meta, ts: Date.now()
+    }));
+  } catch (e) {
+    console.log("Weather fetch failed:", e);
+    el.innerHTML = `<span class="icon">📡</span><span>আবহাওয়া লোড হয়নি — 🔄 চাপুন</span>`;
+  }
+}
+
+$("retryWeather").addEventListener("click", () => {
+  localStorage.removeItem("fancyClockLocation");
+  autoDetect();
+});
+
+function initAutoLocation() {
+  try {
+    const saved = localStorage.getItem("fancyClockLocation");
+    if (saved) {
+      const data = JSON.parse(saved);
+      const age = Date.now() - (data.ts || 0);
+      const MAX_AGE = 30 * 60 * 1000;
+
+      if (age < MAX_AGE && data.lat && data.lon) {
+        let locationText = data.areaName || "";
+        if (data.cityName && data.cityName !== data.areaName) locationText += `, ${data.cityName}`;
+        if (data.countryName && data.countryName !== "India" && data.countryName !== "Bangladesh") {
+          locationText += `, ${data.countryName}`;
+        }
+        $("locationLine").innerHTML = `📍 <b>${locationText}</b>`;
+        $("detectInfo").textContent = "💾 cache থেকে";
+        fetchWeather(data.lat, data.lon, data);
+        return
+      }
+    }
+  } catch(e) {}
+
+  autoDetect();
+}
+
+initAutoLocation();
+
+setInterval(autoDetect, 30 * 60 * 1000);
+
+setInterval(() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem("fancyClockLocation") || "{}");
+    if (saved.lat && saved.lon) fetchWeather(saved.lat, saved.lon, saved);
+  } catch(e) {}
+}, 600000);
+
+/* ============ ALARM ============ */
+function renderAlarms() {
+  const el = $("alarmList");
+  el.innerHTML = "";
+  if (!alarms.length) {
+    el.innerHTML = `<div class="hint">কোনো অ্যালার্ম নেই</div>`;
+    return;
+  }
+  alarms.forEach((al, i) => {
+    const row = document.createElement("div");
+    row.className = "alarm-item";
+    row.innerHTML = `<span>⏰ ${al.time} ${al.label ? "• " + al.label : ""}</span>
+                     <button class="remove-btn" data-i="${i}">REMOVE</button>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll(".remove-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      alarms.splice(Number(b.dataset.i), 1);
+      renderAlarms();
+      saveAll();
+    });
+  });
+}
+
+function addAlarm(hm, label = "") {
+  alarms.push({ time: hm, fired: false, label });
+  alarms.sort((a, b) => a.time.localeCompare(b.time));
+  renderAlarms();
+  saveAll();
+}
+
+$("addAlarm").addEventListener("click", () => {
+  const v = $("alarmTime").value;
+  const lbl = $("alarmLabel").value.trim();
+  if (v) {
+    addAlarm(v, lbl);
+    $("alarmLabel").value = "";
+  }
+});
+
+$("test30").addEventListener("click", () => {
+  const d = new Date(Date.now() + 30000);
+  const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  addAlarm(hm, "৩০s টেস্ট");
+  alert("৩০ সেকেন্ড পরে বাজবে — সময়: " + hm);
+});
+
+$("test60").addEventListener("click", () => {
+  const d = new Date(Date.now() + 60000);
+  const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  addAlarm(hm, "১m টেস্ট");
+  alert("১ মিনিট পরে বাজবে — সময়: " + hm);
+});
+
+$("testSound").addEventListener("click", () => { unlockAudio(); beep(); });
+
+function checkAlarms(hm) {
+  if (ringing) return;
+  alarms.forEach(al => {
+    if (!al.fired && al.time === hm) {
+      al.fired = true;
+      ringing = al.time;
+      showRing(al.time, al.label);
+    }
+  });
+}
+
+function showRing(t, label) {
+  $("ringTime").textContent = t;
+  $("ringLabel").textContent = label || "";
+  $("ringModal").classList.add("active");
+  beep();
+  if (ringTimer) clearInterval(ringTimer);
+  ringTimer = setInterval(beep, customSoundURL ? 2000 : 700);
+}
+
+$("stopRing").addEventListener("click", () => {
+  $("ringModal").classList.remove("active");
+  if (ringTimer) { clearInterval(ringTimer); ringTimer = null; }
+  if (ringing) {
+    alarms = alarms.filter(a => a.time !== ringing);
+    ringing = null;
+    renderAlarms();
+    saveAll();
+  }
+});
+
+/* ============ STOPWATCH ============ */
+let swRunning = false, swStartTs = 0, swElapsed = 0, swRAF = null;
+
+function fmt(ms) {
+  const cs = Math.floor(ms / 10) % 100;
+  const s  = Math.floor(ms / 1000) % 60;
+  const m  = Math.floor(ms / 60000) % 60;
+  const h  = Math.floor(ms / 3600000);
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}.${pad2(cs)}`;
+}
+
+function swLoop() {
+  if (!swRunning) return;
+  $("swDisplay").textContent = fmt(swElapsed + (performance.now() - swStartTs));
+  swRAF = requestAnimationFrame(swLoop);
+}
+
+$("swStart").addEventListener("click", () => {
+  if (swRunning) return;
+  swRunning = true;
+  swStartTs = performance.now();
+  swLoop();
+});
+$("swStop").addEventListener("click", () => {
+  if (!swRunning) return;
+  swElapsed += performance.now() - swStartTs;
+  swRunning = false;
+  if (swRAF) cancelAnimationFrame(swRAF);
+  $("swDisplay").textContent = fmt(swElapsed);
+});
+$("swReset").addEventListener("click", () => {
+  swRunning = false;
+  if (swRAF) cancelAnimationFrame(swRAF);
+  swElapsed = 0;
+  $("swDisplay").textContent = "00:00:00.00";
+});
+
+/* ============ CALENDAR ============ */
+let calYear, calMonth;
+const today = new Date();
+calYear = today.getFullYear();
+calMonth = today.getMonth();
+
+function renderCalendar() {
+  const monthNames = ["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন",
+                      "জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
+  $("calMonth").textContent = `${monthNames[calMonth]} ${calYear}`;
+
+  const grid = $("calGrid");
+  grid.innerHTML = "";
+
+  ["রবি","সোম","মঙ্গল","বুধ","বৃহ","শুক্র","শনি"].forEach(d => {
+    const el = document.createElement("div");
+    el.className = "cal-cell head";
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement("div");
+    el.className = "cal-cell empty";
+    grid.appendChild(el);
+  }
+
+  const now = new Date();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement("div");
+    el.className = "cal-cell";
+    el.textContent = d;
+    if (d === now.getDate() && calMonth === now.getMonth() && calYear === now.getFullYear()) {
+      el.classList.add("today");
+    }
+    grid.appendChild(el);
+  }
+}
+
+$("calPrev").addEventListener("click", () => {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+});
+$("calNext").addEventListener("click", () => {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+});
+renderCalendar();
+
+/* ============ THEME ============ */
+const THEMES = {
+  purple: { fg1:"#E645F5", fg2:"#FF8CFF", border:"#E645F5", gradA:"#B379FA", gradB:"#16131B", gradC:"#C1B6CB", box:"#2C0071" },
+  cyan:   { fg1:"#22d3ee", fg2:"#67e8f9", border:"#22d3ee", gradA:"#06b6d4", gradB:"#0e7490", gradC:"#a5f3fc", box:"#0a2e38" },
+  green:  { fg1:"#34d399", fg2:"#6ee7b7", border:"#34d399", gradA:"#10b981", gradB:"#065f46", gradC:"#a7f3d0", box:"#052e21" },
+  orange: { fg1:"#fb923c", fg2:"#fdba74", border:"#fb923c", gradA:"#f97316", gradB:"#7c2d12", gradC:"#fed7aa", box:"#3a1a08" },
+  red:    { fg1:"#f43f5e", fg2:"#fb7185", border:"#f43f5e", gradA:"#e11d48", gradB:"#7f1d1d", gradC:"#fecdd3", box:"#3a0a12" },
+  blue:   { fg1:"#3b82f6", fg2:"#60a5fa", border:"#3b82f6", gradA:"#2563eb", gradB:"#1e3a8a", gradC:"#bfdbfe", box:"#0a1a3a" }
+};
+
+function applyColor(name) {
+  const t = THEMES[name];
+  if (!t) return;
+  const r = document.documentElement.style;
+  r.setProperty("--fg-1", t.fg1);
+  r.setProperty("--fg-2", t.fg2);
+  r.setProperty("--border", t.border);
+  r.setProperty("--grad-a", t.gradA);
+  r.setProperty("--grad-b", t.gradB);
+  r.setProperty("--grad-c", t.gradC);
+  r.setProperty("--bg-box", t.box);
+  document.querySelectorAll(".preset").forEach(p => {
+    p.classList.toggle("active", p.dataset.color === name);
+  });
+  localStorage.setItem("fancyClockColor", name);
+}
+
+document.querySelectorAll(".preset").forEach(p => {
+  p.addEventListener("click", () => applyColor(p.dataset.color));
+});
+
+/* ============ LIGHT/DARK ============ */
+let isLight = false;
+function applyTheme() {
+  document.body.classList.toggle("light", isLight);
+  $("themeToggle").textContent = isLight ? "☀️ LIGHT" : "🌙 DARK";
+  localStorage.setItem("fancyClockTheme", isLight ? "light" : "dark");
+}
+$("themeToggle").addEventListener("click", () => {
+  isLight = !isLight;
+  applyTheme();
+});
+
+/* ============ CUSTOM SOUND ============ */
+$("soundFile").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (customSoundURL) URL.revokeObjectURL(customSoundURL);
+  customSoundURL = URL.createObjectURL(f);
+  $("soundName").textContent = f.name;
+});
+
+/* ============ PERSISTENCE ============ */
+function saveAll() {
+  try {
+    localStorage.setItem("fancyClockAlarms", JSON.stringify(alarms));
+  } catch(e) {}
+}
+function loadAll() {
+  try {
+    const data = localStorage.getItem("fancyClockAlarms");
+    if (data) {
+      alarms = JSON.parse(data).map(a => ({ ...a, fired: false }));
+    }
+    const color = localStorage.getItem("fancyClockColor") || "purple";
+    applyColor(color);
+    const theme = localStorage.getItem("fancyClockTheme");
+    isLight = theme === "light";
+    applyTheme();
+  } catch(e) {}
+}
+loadAll();
+renderAlarms();
+
+$("clearAll").addEventListener("click", () => {
+  if (confirm("সব অ্যালার্ম, location cache ও সেটিংস মুছে ফেলবে?")) {
+    localStorage.removeItem("fancyClockAlarms");
+    localStorage.removeItem("fancyClockColor");
+    localStorage.removeItem("fancyClockTheme");
+    localStorage.removeItem("fancyClockLocation");
+    alarms = [];
+    renderAlarms();
+    applyColor("purple");
+    isLight = false;
+    applyTheme();
+    autoDetect();
+  }
+});
+
+console.log("✅ Fancy Clock v3 লোড হয়েছে — Auto Location সক্রিয়");
+</script>
+
+</body>
+</html>

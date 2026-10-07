@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<title>Fancy Clock</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:#0a0014; font-family:'Segoe UI',sans-serif; padding:20px;
+}
+.glow {
+  padding:5px; border-radius:26px;
+  background:linear-gradient(135deg,#B379FA,#16131B,#C1B6CB,#E645F5,#B379FA);
+  background-size:400% 400%;
+  animation:move 8s ease infinite, pulse 3s ease-in-out infinite;
+}
+@keyframes move { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+@keyframes pulse {
+  0%,100% { box-shadow:0 0 20px #E645F5, 0 0 45px #B379FA; }
+  50%     { box-shadow:0 0 35px #E645F5, 0 0 70px #B379FA; }
+}
+.box {
+  background:rgba(44,0,113,0.6);
+  border-radius:22px; padding:28px 40px; text-align:center;
+  border:1px solid rgba(255,255,255,0.1);
+  width:520px; max-width:95vw;
+}
+.tabs { display:flex; justify-content:center; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+.tab {
+  background:rgba(230,69,245,0.1); color:#C1B6CB;
+  border:1px solid rgba(230,69,245,0.3);
+  padding:8px 18px; border-radius:20px;
+  font-size:12px; cursor:pointer; letter-spacing:1px;
+  transition:all 0.3s;
+}
+.tab.active, .tab:hover {
+  background:rgba(230,69,245,0.3); color:#FF8CFF;
+  box-shadow:0 0 12px rgba(230,69,245,0.6);
+}
+.panel { display:none; }
+.panel.active { display:block; }
+.view { display:flex; align-items:center; justify-content:center; gap:25px; padding:10px 0; flex-wrap:wrap; }
+.day  { color:#FF8CFF; font-size:13px; letter-spacing:5px; font-weight:600; margin-bottom:6px; }
+.time { color:#E645F5; font-size:48px; font-weight:700; letter-spacing:2px;
+        text-shadow:0 0 10px #E645F5,0 0 22px #E645F5; line-height:1; }
+.ampm { color:#FF8CFF; font-size:13px; font-weight:600; margin-top:4px; letter-spacing:3px; }
+.date { color:#C1B6CB; font-size:11px; margin-top:10px; letter-spacing:1.5px; }
+.analog {
+  position:relative; width:140px; height:140px; border-radius:50%;
+  background:radial-gradient(circle,rgba(44,0,113,0.9),rgba(20,0,50,0.9));
+  border:2px solid #E645F5;
+  box-shadow:0 0 15px #E645F5, inset 0 0 15px rgba(230,69,245,0.4);
+}
+.analog::before {
+  content:''; position:absolute; top:50%; left:50%;
+  width:10px; height:10px; background:#FF8CFF; border-radius:50%;
+  transform:translate(-50%,-50%); box-shadow:0 0 10px #E645F5; z-index:10;
+}
+.hand { position:absolute; bottom:50%; left:50%;
+        transform-origin:bottom center; border-radius:4px; }
+.hh { width:4px; height:38px; margin-left:-2px; background:#FF8CFF; box-shadow:0 0 8px #E645F5; }
+.mh { width:3px; height:52px; margin-left:-1.5px; background:#E645F5; box-shadow:0 0 8px #E645F5; }
+.sh { width:2px; height:58px; margin-left:-1px; background:#C1B6CB; box-shadow:0 0 6px #C1B6CB; }
+h3 { color:#FF8CFF; font-size:13px; letter-spacing:3px; margin-bottom:12px; }
+.row { display:flex; gap:8px; justify-content:center; margin-bottom:10px; flex-wrap:wrap; }
+input[type="time"] {
+  background:rgba(230,69,245,0.1); border:1px solid rgba(230,69,245,0.4);
+  color:#E645F5; padding:8px 12px; border-radius:8px; font-size:16px;
+  outline:none; font-family:inherit;
+}
+.btn {
+  background:linear-gradient(135deg,#B379FA,#E645F5); color:#fff;
+  border:none; padding:8px 18px; border-radius:8px;
+  font-size:12px; font-weight:600; letter-spacing:1px;
+  cursor:pointer; transition:all 0.3s; font-family:inherit;
+  box-shadow:0 0 12px rgba(230,69,245,0.5);
+}
+.btn:hover { transform:translateY(-2px); box-shadow:0 0 22px #E645F5; }
+.btn.red    { background:linear-gradient(135deg,#ff3d6e,#E645F5); }
+.btn.green  { background:linear-gradient(135deg,#0ff,#0a9); }
+.btn.tiny   { padding:5px 12px; font-size:11px; }
+.alarm-item {
+  display:flex; justify-content:space-between; align-items:center;
+  background:rgba(230,69,245,0.08); border:1px solid rgba(230,69,245,0.25);
+  padding:8px 14px; border-radius:10px; margin-bottom:8px;
+  color:#C1B6CB; font-size:13px; letter-spacing:1px;
+}
+.alarm-item span { color:#E645F5; font-weight:600; }
+.remove-btn {
+  background:transparent; color:#ff3d6e; border:1px solid #ff3d6e;
+  border-radius:6px; padding:3px 10px; cursor:pointer; font-size:11px;
+}
+.remove-btn:hover { background:#ff3d6e; color:#fff; }
+.sw-display {
+  color:#E645F5; font-size:42px; font-weight:700; letter-spacing:3px;
+  text-shadow:0 0 15px #E645F5; margin:10px 0 18px;
+  font-variant-numeric:tabular-nums;
+}
+.hint { color:#C1B6CB; font-size:11px; margin-top:12px; opacity:0.7; letter-spacing:1px; }
+.hint b { color:#E645F5; }
+.modal {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9);
+  z-index:9999; align-items:center; justify-content:center;
+}
+.modal.active { display:flex; animation:shake 0.5s infinite; }
+@keyframes shake {
+  0%,100% { transform:translateX(0); }
+  25% { transform:translateX(-5px); }
+  75% { transform:translateX(5px); }
+}
+.ring-box {
+  background:#2C0071; border:2px solid #E645F5; border-radius:20px;
+  padding:40px 60px; text-align:center; box-shadow:0 0 60px #E645F5;
+}
+.ring-box h2 { color:#FF8CFF; font-size:30px; letter-spacing:4px; margin-bottom:20px; }
+.ring-box .rtime { color:#E645F5; font-size:48px; font-weight:700; margin-bottom:25px; }
+</style>
+</head>
+<body>
+
+<div class="glow">
+  <div class="box">
+    <div class="tabs">
+      <div class="tab active" data-tab="clock">🕐 CLOCK</div>
+      <div class="tab" data-tab="alarm">⏰ ALARM</div>
+      <div class="tab" data-tab="stopwatch">⏱️ STOPWATCH</div>
+    </div>
+
+    <div class="panel active" id="panel-clock">
+      <div class="view">
+        <div class="digital">
+          <div class="day"  id="day">—</div>
+          <div class="time" id="time">00:00:00</div>
+          <div class="ampm" id="ampm">AM</div>
+          <div class="date" id="date">—</div>
+        </div>
+        <div class="analog" id="analog">
+          <div class="hand hh" id="hh"></div>
+          <div class="hand mh" id="mh"></div>
+          <div class="hand sh" id="sh"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-alarm">
+      <h3>SET ALARM</h3>
+      <div class="row">
+        <input type="time" id="alarmTime" value="07:00">
+        <button class="btn" id="addAlarm">ADD</button>
+      </div>
+      <div class="row">
+        <button class="btn green tiny" id="test30">+30s টেস্ট</button>
+        <button class="btn green tiny" id="test60">+1m টেস্ট</button>
+        <button class="btn tiny" id="testSound">🔊 শব্দ টেস্ট</button>
+      </div>
+      <div id="alarmList"></div>
+      <div class="hint">এখন: <b id="nowHM">--:--</b></div>
+    </div>
+
+    <div class="panel" id="panel-stopwatch">
+      <h3>STOPWATCH</h3>
+      <div class="sw-display" id="swDisplay">00:00:00.00</div>
+      <div class="row">
+        <button class="btn" id="swStart">START</button>
+        <button class="btn" id="swStop">STOP</button>
+        <button class="btn red" id="swReset">RESET</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="ringModal">
+  <div class="ring-box">
+    <h2>⏰ ALARM!</h2>
+    <div class="rtime" id="ringTime">00:00</div>
+    <button class="btn red" id="stopRing">STOP</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const pad2 = n => String(n).padStart(2, "0");
+const $    = id => document.getElementById(id);
+
+/* ---- STATE ---- */
+let alarms = [];
+let ringing = null;
+let ringTimer = null;
+
+/* ---- AUDIO ---- */
+let audioCtx = null;
+function unlockAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) { console.error(e); }
+}
+document.addEventListener("click", unlockAudio);
+
+function beep() {
+  unlockAudio();
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = "sine"; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+    o.start();
+    o.stop(audioCtx.currentTime + 0.45);
+  } catch (e) { console.error(e); }
+}
+
+/* ---- TABS ---- */
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    $("panel-" + t.dataset.tab).classList.add("active");
+  });
+});
+
+/* ---- CLOCK ---- */
+const days   = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"];
+const months = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"];
+
+function tickClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+
+  $("day").textContent  = days[now.getDay()];
+  $("time").textContent = `${pad2(h12)}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+  $("ampm").textContent = ampm;
+  $("date").textContent = `${pad2(now.getDate())} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  $("nowHM").textContent = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+
+  const s = now.getSeconds();
+  const m = now.getMinutes() + s / 60;
+  const hr = (now.getHours() % 12) + m / 60;
+  $("sh").style.transform = `rotate(${s * 6}deg)`;
+  $("mh").style.transform = `rotate(${m * 6}deg)`;
+  $("hh").style.transform = `rotate(${hr * 30}deg)`;
+
+  checkAlarms(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`);
+}
+
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ---- ALARM ---- */
+function renderAlarms() {
+  const el = $("alarmList");
+  el.innerHTML = "";
+  if (!alarms.length) {
+    el.innerHTML = `<div class="hint">কোনো অ্যালার্ম নেই</div>`;
+    return;
+  }
+  alarms.forEach((al, i) => {
+    const row = document.createElement("div");
+    row.className = "alarm-item";
+    row.innerHTML = `<span>⏰ ${al.time}</span>
+                     <button class="remove-btn" data-i="${i}">REMOVE</button>`;
+    el.appendChild(row);
+  });
+  el.querySelectorAll(".remove-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      alarms.splice(Number(b.dataset.i), 1);
+      renderAlarms();
+    });
+  });
+}
+
+function addAlarm(hm) {
+  alarms.push({ time: hm, fired: false });
+  alarms.sort((a, b) => a.time.localeCompare(b.time));
+  renderAlarms();
+}
+
+$("addAlarm").addEventListener("click", () => {
+  const v = $("alarmTime").value;
+  if (v) addAlarm(v);
+});
+
+$("test30").addEventListener("click", () => {
+  const d = new Date(Date.now() + 30000);
+  const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  addAlarm(hm);
+  alert("৩০ সেকেন্ড পরে বাজবে — সময়: " + hm);
+});
+
+$("test60").addEventListener("click", () => {
+  const d = new Date(Date.now() + 60000);
+  const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  addAlarm(hm);
+  alert("১ মিনিট পরে বাজবে — সময়: " + hm);
+});
+
+$("testSound").addEventListener("click", () => { unlockAudio(); beep(); });
+
+function checkAlarms(hm) {
+  if (ringing) return;
+  alarms.forEach(al => {
+    if (!al.fired && al.time === hm) {
+      al.fired = true;
+      ringing = al.time;
+      showRing(al.time);
+    }
+  });
+}
+
+/* ---- RING ---- */
+function showRing(t) {
+  $("ringTime").textContent = t;
+  $("ringModal").classList.add("active");
+  beep();
+  if (ringTimer) clearInterval(ringTimer);
+  ringTimer = setInterval(beep, 700);
+}
+
+$("stopRing").addEventListener("click", () => {
+  $("ringModal").classList.remove("active");
+  if (ringTimer) { clearInterval(ringTimer); ringTimer = null; }
+  if (ringing) {
+    alarms = alarms.filter(a => a.time !== ringing);
+    ringing = null;
+    renderAlarms();
+  }
+});
+
+/* ---- STOPWATCH ---- */
+let swRunning = false, swStartTs = 0, swElapsed = 0, swRAF = null;
+
+function fmt(ms) {
+  const cs = Math.floor(ms / 10) % 100;
+  const s  = Math.floor(ms / 1000) % 60;
+  const m  = Math.floor(ms / 60000) % 60;
+  const h  = Math.floor(ms / 3600000);
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}.${pad2(cs)}`;
+}
+
+function swLoop() {
+  if (!swRunning) return;
+  $("swDisplay").textContent = fmt(swElapsed + (performance.now() - swStartTs));
+  swRAF = requestAnimationFrame(swLoop);
+}
+
+$("swStart").addEventListener("click", () => {
+  if (swRunning) return;
+  swRunning = true;
+  swStartTs = performance.now();
+  swLoop();
+});
+
+$("swStop").addEventListener("click", () => {
+  if (!swRunning) return;
+  swElapsed += performance.now() - swStartTs;
+  swRunning = false;
+  if (swRAF) cancelAnimationFrame(swRAF);
+  $("swDisplay").textContent = fmt(swElapsed);
+});
+
+$("swReset").addEventListener("click", () => {
+  swRunning = false;
+  if (swRAF) cancelAnimationFrame(swRAF);
+  swElapsed = 0;
+  $("swDisplay").textContent = "00:00:00.00";
+});
+</script>
+
+</body>
+</html>
